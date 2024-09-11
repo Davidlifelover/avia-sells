@@ -1,1 +1,1 @@
-https://aviasales-app-blush.vercel.app/
+https://avia-sells.vercel.app
