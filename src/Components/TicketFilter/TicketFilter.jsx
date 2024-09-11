@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { setFilterTickets } from '../../store/actions/getTickets';
 import styles from './TicketFilter.module.scss';
@@ -11,6 +12,14 @@ export default function TicketFilter() {
     'Самый быстрый': 'fastest',
     'Оптимальный': 'optimal',
   };
+
+  const defaultFilter = 'optimal';
+
+  useEffect(() => {
+    if (!selectedFilter) {
+      dispatch(setFilterTickets(defaultFilter));
+    }
+  }, [dispatch, selectedFilter]);
 
   const handleFilterClick = (filterName) => {
     const filterKey = filterMap[filterName];

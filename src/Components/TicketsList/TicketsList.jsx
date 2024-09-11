@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import BarLoader from 'react-spinners/BarLoader';
 import { getTickets, startLoadingTickets, finishLoadingTickets } from '../../store/actions/getTickets';
@@ -14,28 +14,54 @@ export default function TicketsList() {
   const filterTickets = useSelector(state => state.tickets.filterTickets);
   const allTicketsLoaded = useSelector(state => state.tickets.allTicketsLoaded);
   const areAllCheckboxesFalse = Object.values(checkboxes).every(value => !value);
+  const [error, setError] = useState(null);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   useEffect(() => {
-    dispatch(startLoadingTickets());
-    dispatch(getTickets())
-      .then(() => dispatch(finishLoadingTickets()));
-  }, [dispatch]);
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
 
-  const filteredTickets = tickets.filter(ticket =>
-    ticket.segments.every(segment => {
-        const stopCount = segment.stops.length.toString();
-        const checkboxesMap = {
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isOffline) return;
+
+    const fetchTickets = async () => {
+      dispatch(startLoadingTickets());
+      try {
+        await dispatch(getTickets());
+        dispatch(finishLoadingTickets());
+      } catch (err) {
+        setError('Не удалось загрузить билеты. Проверьте подключение к сети.');
+      }
+    };
+    
+    fetchTickets();
+  }, [dispatch, isOffline]);
+
+  const filteredTickets = areAllCheckboxesFalse
+    ? tickets
+    : tickets.filter(ticket =>
+        ticket.segments.every(segment => {
+          const stopCount = segment.stops.length.toString();
+          const checkboxesMap = {
             '0': checkboxes.noStops,
             '1': checkboxes.oneStop,
             '2': checkboxes.twoStops,
             '3': checkboxes.threeStops,
-        };
+          };
 
-        const result = checkboxesMap[stopCount] ?? false;
-        return result;
-    })
-);
-
+          const result = checkboxesMap[stopCount] ?? false;
+          return result;
+        })
+      );
 
   const sortTickets = (ticketsToSort, filterType) => {
     switch (filterType) {
@@ -62,10 +88,18 @@ export default function TicketsList() {
 
   const sortedAndFilteredTickets = sortTickets(filteredTickets, filterTickets);
 
-  if (areAllCheckboxesFalse) {
+  if (isOffline) {
+    return <p className={styles.error}>Проверьте подключение к сети.</p>;
+  }
+
+  if (error) {
+    return <p className={styles.error}>{error}</p>;
+  }
+
+  if (areAllCheckboxesFalse && filteredTickets.length === 0) {
     return <p className={styles.noResults}>Рейсов, подходящих под заданные фильтры, не найдено</p>;
   }
-  
+
   return (
     <>
       {!allTicketsLoaded && (
@@ -94,7 +128,7 @@ export default function TicketsList() {
       )}
       {sortedAndFilteredTickets.slice(0, visibleTickets).map((ticket) => (
         <Ticket
-        key={`${ticket.price}-${ticket.carrier}-${ticket.departureTime}`}
+          key={`${ticket.price}-${ticket.carrier}-${ticket.departureTime}`}
           price={ticket.price}
           carrier={ticket.carrier}
           segments={ticket.segments}
