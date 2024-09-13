@@ -46,23 +46,26 @@ export default function TicketsList() {
     fetchTickets();
   }, [dispatch, isOffline]);
 
-  const filteredTickets = areAllCheckboxesFalse
-    ? tickets
-    : tickets.filter(ticket =>
-        ticket.segments.every(segment => {
-          const stopCount = segment.stops.length.toString();
-          const checkboxesMap = {
+  useEffect(() => {
+    dispatch(startLoadingTickets());
+    dispatch(getTickets())
+      .then(() => dispatch(finishLoadingTickets()));
+  }, [dispatch]);
+
+  const filteredTickets = tickets.filter(ticket =>
+    ticket.segments.every(segment => {
+        const stopCount = segment.stops.length.toString();
+        const checkboxesMap = {
             '0': checkboxes.noStops,
             '1': checkboxes.oneStop,
             '2': checkboxes.twoStops,
             '3': checkboxes.threeStops,
-          };
+        };
 
-          const result = checkboxesMap[stopCount] ?? false;
-          return result;
-        })
-      );
-
+        const result = checkboxesMap[stopCount] ?? false;
+        return result;
+    })
+);
   const sortTickets = (ticketsToSort, filterType) => {
     switch (filterType) {
       case 'cheapest':
